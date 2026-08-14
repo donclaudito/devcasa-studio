@@ -1,5 +1,4 @@
 ﻿import { useEffect, useState } from "react";
-import JSZip from "jszip";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EditorPanel from "./components/EditorPanel.jsx";
 import PreviewPanel from "./components/PreviewPanel.jsx";
@@ -7,15 +6,12 @@ import { ModalModelos, ModalConfig, ModalAjuda } from "./components/Modais.jsx";
 import { TEMPLATES } from "./lib/templates.js";
 import { mensagemBoasVindas, responder, consultarAPI, extrairCodigo } from "./lib/assistant.js";
 import { carregarProjetos, salvarProjetos, novoProjeto, montarDocumento, baixarArquivo } from "./lib/storage.js";
+import { baixarProjetoReact, slugNome } from "./lib/exportar.js";
 
 function carregarConfig() {
   const padrao = { usarApi: false, apiUrl: "", apiKey: "", modelo: "" };
   try { return Object.assign({}, padrao, JSON.parse(localStorage.getItem("devcasa:config") || "{}")); }
   catch (e) { return padrao; }
-}
-
-function slugNome(t) {
-  return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "meu-app";
 }
 
 export default function App() {
@@ -47,9 +43,7 @@ export default function App() {
   function executar() {
     setInstantaneo({ codigo: projetoAtivo.codigo, css: projetoAtivo.css, versao: Date.now() });
   }
-  function novoChat() {
-    setMensagens([mensagemBoasVindas()]);
-  }
+  function novoChat() { setMensagens([mensagemBoasVindas()]); }
   function criarProjeto() {
     const nome = window.prompt("Nome do novo projeto:", "Projeto " + (projetos.length + 1));
     if (!nome) return;
@@ -109,49 +103,10 @@ export default function App() {
     const html = montarDocumento({ codigo: projetoAtivo.codigo, css: projetoAtivo.css, titulo: projetoAtivo.nome });
     baixarArquivo(slugNome(projetoAtivo.nome) + ".html", html);
   }
-
   async function baixarReact() {
-    try {
-      const nome = slugNome(projetoAtivo.nome);
-      const zip = new JSZip();
-      const raiz = zip.folder(nome + "-react");
-
-      raiz.file("package.json", JSON.stringify({
-        name: nome,
-        private: true,
-        version: "1.0.0",
-        type: "module",
-        scripts: { dev: "vite", build: "vite build", preview: "vite preview" },
-        dependencies: { react: "^18.3.1", "react-dom": "^18.3.1" },
-        devDependencies: { "@vitejs/plugin-react": "^4.3.1", vite: "^5.4.8" }
-      }, null, 2));
-
-      raiz.file("vite.config.js", "import { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({ plugins: [react()] });\n");
-
-      raiz.file("index.html", "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>" + projetoAtivo.nome + "</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script type=\"module\" src=\"/src/main.jsx\"></script>\n  </body>\n</html>\n");
-
-      raiz.file("src/main.jsx", "import React from \"react\";\nimport { createRoot } from \"react-dom/client\";\nimport App from \"./App.jsx\";\nimport \"./styles.css\";\n\ncreateRoot(document.getElementById(\"root\")).render(<App />);\n");
-
-      raiz.file("src/App.jsx", "import React from \"react\";\n\n" + projetoAtivo.codigo + "\n\nexport default App;\n");
-
-      raiz.file("src/styles.css", projetoAtivo.css || "");
-
-      raiz.file("README.md", "# " + projetoAtivo.nome + "\n\nApp criado no DevCasa Studio e exportado como projeto React + Vite.\n\n## Como rodar\n\n1. Instale o Node.js (nodejs.org), se ainda não tiver\n2. Extraia este ZIP e abra a pasta no terminal (ou no VS Code)\n3. Rode: npm install\n4. Rode: npm run dev\n5. Abra http://localhost:5173\n\n## Estrutura\n\n- src/App.jsx — lógica e interface do app\n- src/styles.css — estilos\n- src/main.jsx — montagem do React (não precisa mexer)\n");
-
-      const blob = await zip.generateAsync({ type: "blob" });
-      const u = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = u;
-      a.download = nome + "-react.zip";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(u), 5000);
-    } catch (e) {
-      alert("Erro ao gerar o ZIP: " + e.message);
-    }
+    try { await baixarProjetoReact(projetoAtivo); }
+    catch (e) { alert("Erro ao gerar o ZIP: " + e.message); }
   }
-
   function usarModelo(id) {
     const t = TEMPLATES.find(x => x.id === id);
     if (t) { setModal(null); inserirCodigo(t.codigo, t.css); }
