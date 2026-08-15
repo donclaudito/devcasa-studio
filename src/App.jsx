@@ -130,7 +130,7 @@ export default function App() {
           {projetos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </select>
         <button onClick={criarProjeto} title="Criar novo projeto com chat novo">➕ Projeto</button>
-        <span className={config.usarApi ? "selo-ia on" : "selo-ia"}>{config.usarApi ? " IA online" : " offline"}</span>
+        <span className={config.usarApi ? "selo-ia on" : "selo-ia"}>{config.usarApi ? "🟢 " + (config.modelo || "IA online") : "⚪ offline"}</span>
         <span className="espaco" />
         <button onClick={() => setModal("modelos")}>🧩 Modelos</button>
         <button className="botao-primario" onClick={baixarHTML}>💾 HTML</button>
@@ -157,3 +157,4 @@ export default function App() {
     </div>
   );
 }
+
