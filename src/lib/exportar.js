@@ -36,8 +36,8 @@ echo [1/3] Node.js encontrado:
 node -v
 echo [2/3] Instalando dependencias (aguarde ~1 min)...
 call npm install
-echo [3/3] Subindo o app... o navegador vai abrir sozinho.
-start "" cmd /c "ping -n 5 127.0.0.1 >nul & start http://localhost:5173"
+echo [3/3] Subindo o app na porta 3000... o navegador vai abrir sozinho.
+start "" cmd /c "ping -n 5 127.0.0.1 >nul & start http://localhost:3000"
 call npm run dev
 pause
 `;
@@ -50,7 +50,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 echo "[1/2] Instalando dependencias..."
 npm install
-echo "[2/2] Subindo o app em http://localhost:5173"
+echo "[2/2] Subindo o app em http://localhost:3000"
 npm run dev
 `;
 
@@ -69,7 +69,7 @@ export async function baixarProjetoReact(projeto) {
     devDependencies: { "@vitejs/plugin-react": "^4.3.1", vite: "^5.4.8" }
   }, null, 2));
 
-  raiz.file("vite.config.js", "import { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({ plugins: [react()] });\n");
+  raiz.file("vite.config.js", "import { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({\n  plugins: [react()],\n  server: { port: 3000 }\n});\n");
 
   raiz.file("index.html", "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>" + projeto.nome + "</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script type=\"module\" src=\"/src/main.jsx\"></script>\n  </body>\n</html>\n");
 
@@ -79,7 +79,7 @@ export async function baixarProjetoReact(projeto) {
   raiz.file("src/styles.css", projeto.css || "");
   raiz.file("INSTALAR_E_RODAR.bat", BAT);
   raiz.file("instalar_e_rodar.sh", SH);
-  raiz.file("README.md", "# " + projeto.nome + "\n\nApp criado no DevCasa Studio (projeto React + Vite).\n\n## Jeito automatico (Windows)\n\nClique duas vezes em INSTALAR_E_RODAR.bat\n(ele verifica/instala o Node, instala as dependencias e abre o app)\n\n## Jeito manual\n\n1. Node.js instalado (nodejs.org)\n2. npm install\n3. npm run dev\n4. Abra http://localhost:5173\n\n## Estrutura\n\n- src/App.jsx — app com imports automaticos ja incluidos\n- src/styles.css — estilos\n- src/main.jsx — montagem do React\n");
+  raiz.file("README.md", "# " + projeto.nome + "\n\nApp criado no DevCasa Studio (projeto React + Vite).\n\n## Jeito automatico (Windows)\n\nClique duas vezes em INSTALAR_E_RODAR.bat\n\n## Jeito manual\n\n1. npm install\n2. npm run dev\n3. Abra http://localhost:3000  (porta fixa deste app)\n\nO DevCasa Studio continua na porta 5173 - sem conflito.\n");
 
   const blob = await zip.generateAsync({ type: "blob" });
   const u = URL.createObjectURL(blob);
