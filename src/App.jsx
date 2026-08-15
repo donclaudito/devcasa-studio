@@ -8,6 +8,8 @@ import { TEMPLATES } from "./lib/templates.js";
 import { mensagemBoasVindas, responder, consultarAPIStream, extrairCodigo } from "./lib/assistant.js";
 import { carregarProjetos, salvarProjetos, novoProjeto, montarDocumento, baixarArquivo } from "./lib/storage.js";
 import { baixarProjetoReact, slugNome } from "./lib/exportar.js";
+import { lerArquivo } from "./lib/anexos.js";
+import { analisarCodigo } from "./lib/analisador.js";
 import * as sync from "./lib/sync.js";
 
 function carregarConfig() {
@@ -29,6 +31,7 @@ export default function App() {
   const [usuario, setUsuario] = useState(null);
   const [statusSync, setStatusSync] = useState(null);
   const [mostrarEditor, setMostrarEditor] = useState(true);
+  const [anexos, setAnexos] = useState([]);
 
   const projetoAtivo = projetos.find(p => p.id === ativoId) ?? projetos[0];
 
@@ -54,20 +57,14 @@ export default function App() {
             setStatusSync({ email: u.email, contador: unidos.length });
             return unidos;
           });
-        } catch (e) {
-          console.warn("Falha ao baixar da nuvem:", e);
-        }
-      } else {
-        setStatusSync(null);
-      }
+        } catch (e) { console.warn("Falha ao baixar da nuvem:", e); }
+      } else { setStatusSync(null); }
     });
   }, []);
 
   useEffect(() => {
     if (!usuario) return;
-    projetos.forEach(p => {
-      sync.enviarParaNuvem(p).catch(e => console.warn("Upload falhou:", e));
-    });
+    projetos.forEach(p => { sync.enviarParaNuvem(p).catch(e => console.warn("Upload falhou:", e)); });
   }, [projetos, usuario]);
 
   useEffect(() => {
@@ -92,23 +89,30 @@ export default function App() {
     setInstantaneo(null);
     setMensagens([mensagemBoasVindas()]);
   }
-  function inserirCodigo(codigo, css) {
+
+  function inserirCodigo(codigo, cssNovo) {
     const mudancas = { codigo: codigo };
-    if (css !== undefined) mudancas.css = css;
+    if (cssNovo !== undefined && cssNovo !== null) mudancas.css = cssNovo;
     atualizarAtivo(mudancas);
     setAba("js");
     setMostrarEditor(true);
-    setInstantaneo({ codigo: codigo, css: css !== undefined ? css : projetoAtivo.css, versao: Date.now() });
+    setInstantaneo({ codigo: codigo, css: cssNovo !== undefined && cssNovo !== null ? cssNovo : projetoAtivo.css, versao: Date.now() });
   }
+
   function aoAcaoChat(a) {
     if (!a) return;
     if (a.tipo === "inserir-template") {
       const t = TEMPLATES.find(x => x.id === a.templateId);
       if (t) inserirCodigo(t.codigo, t.css);
     } else if (a.tipo === "inserir-codigo") {
-      inserirCodigo(a.codigo);
+      inserirCodigo(a.codigo, a.css);
+    } else if (a.tipo === "corrigir-erro") {
+      const listaErros = a.erros.map(e => "- [" + e.tipo + "] " + e.msg).join("\n");
+      const textoFix = "O código que você gerou tem erros. Corrija TODOS os problemas abaixo e envie o código COMPLETO em um único bloco jsx, com CSS em bloco css separado:\n\n" + listaErros + "\n\nCódigo atual:\n```jsx\n" + (a.codigo || "").slice(0, 3000) + "\n```";
+      enviarChat(textoFix);
     }
   }
+
   function atualizarUltima(mudanca) {
     setMensagens(m => {
       const copia = m.slice();
@@ -116,6 +120,15 @@ export default function App() {
       return copia;
     });
   }
+
+  async function anexarArquivos(files) {
+    for (const f of files) {
+      try { const a = await lerArquivo(f); setAnexos(l => [...l, a]); }
+      catch (e) { alert("⚠️ " + e.message); }
+    }
+  }
+  function removerAnexo(i) { setAnexos(l => l.filter((_, j) => j !== i)); }
+
   function sincronizarAgora() {
     if (!usuario) return;
     sync.baixarDaNuvem().then(nuvem => {
@@ -133,31 +146,76 @@ export default function App() {
     }).catch(e => alert("Erro: " + e.message));
   }
 
+  function aoErroRuntime(erro) {
+    setMensagens(m => {
+      const copia = m.slice();
+      const ultima = copia[copia.length - 1];
+      if (ultima && ultima.autor === "ia" && !ultima.erroAnalise) {
+        copia[copia.length - 1] = Object.assign({}, ultima, {
+          texto: ultima.texto + "\n\n⚠️ Erro de runtime no preview: " + erro
+        });
+      }
+      return copia;
+    });
+  }
+
   async function enviarChat(texto) {
-    if (texto.startsWith("/limpar")) { setMensagens([mensagemBoasVindas()]); return; }
-    setMensagens(m => [...m, { autor: "usuario", texto }]);
+    const anexosAtuais = Array.isArray(anexos) ? anexos : [];
+    setAnexos([]);
+    setMensagens(m => [...m, { autor: "usuario", texto: texto, anexos: anexosAtuais }]);
+
     if (config.usarApi && config.apiUrl) {
       setOcupado(true);
       setMensagens(m => [...m, { autor: "ia", texto: "✍️" }]);
       try {
-        const historico = [...mensagens, { autor: "usuario", texto }].slice(-10).map(m => ({
-          role: m.autor === "ia" ? "assistant" : "user",
-          content: m.texto
-        }));
-        const resposta = await consultarAPIStream(config, historico, (parcial) => {
-          atualizarUltima({ texto: parcial });
-        });
-        const codigo = extrairCodigo(resposta);
-        atualizarUltima({
-          texto: resposta,
-          acao: codigo ? { tipo: "inserir-codigo", codigo: codigo, rotulo: "📥 Inserir código no editor" } : null
-        });
+        const docs = anexosAtuais.filter(a => a.tipo === "texto");
+        const imgs = anexosAtuais.filter(a => a.tipo === "imagem");
+        let textoCompleto = texto;
+        docs.forEach(d => { textoCompleto += "\n\n--- 📄 Documento anexo: " + d.nome + " ---\n" + d.conteudo; });
+
+        const historico = mensagens.slice(-10).map(m => ({ role: m.autor === "ia" ? "assistant" : "user", content: String(m.texto) }));
+
+        let cfg = config;
+        let conteudoUsuario = textoCompleto;
+        if (imgs.length) {
+          const url = config.apiUrl || "";
+          const modeloVisao = /groq/i.test(url) ? "llama-3.2-90b-vision-preview" : /mistral/i.test(url) ? "pixtral-12b-2409" : null;
+          if (modeloVisao) {
+            cfg = Object.assign({}, config, { modelo: modeloVisao });
+            conteudoUsuario = [{ type: "text", text: textoCompleto || "Analise o(s) anexo(s)." }].concat(imgs.map(im => ({ type: "image_url", image_url: { url: im.dataUrl } })));
+          } else {
+            textoCompleto += "\n[Imagens anexadas: " + (imgs || []).map(i => i && i.nome).filter(Boolean).join(", ") + "]";
+            conteudoUsuario = textoCompleto;
+          }
+        }
+        historico.push({ role: "user", content: conteudoUsuario });
+
+        const resposta = await consultarAPIStream(cfg, historico, (parcial) => { atualizarUltima({ texto: parcial }); });
+
+        const resultado = extrairCodigo(resposta);
+        if (resultado) {
+          const analise = analisarCodigo(resultado.codigo, resultado.css);
+          if (analise.erros.length > 0) {
+            atualizarUltima({
+              texto: resposta,
+              erroAnalise: { erros: analise.erros, codigo: resultado.codigo, css: resultado.css }
+            });
+          } else {
+            atualizarUltima({
+              texto: resposta,
+              acao: { tipo: "inserir-codigo", codigo: resultado.codigo, css: resultado.css, rotulo: "📥 Inserir código no editor" }
+            });
+          }
+        } else {
+          atualizarUltima({ texto: resposta });
+        }
       } catch (erro) {
         atualizarUltima({ texto: "⚠️ Falha na IA: " + erro.message });
       } finally { setOcupado(false); }
     } else {
       const r = responder(texto);
-      setMensagens(m => [...m, { autor: "ia", texto: r.texto, acao: r.acao ? r.acao : null }]);
+      const notaAnexos = anexosAtuais.length ? "\n\n📎 Recebi: " + anexosAtuais.map(a => a.nome).join(", ") + "\n💡 Para eu ANALISAR o conteúdo, ligue a IA online em ⚙️." : "";
+      setMensagens(m => [...m, { autor: "ia", texto: r.texto + notaAnexos, acao: r.acao ? r.acao : null }]);
     }
   }
 
@@ -182,10 +240,10 @@ export default function App() {
         <select value={projetoAtivo.id} onChange={e => { setAtivoId(e.target.value); setInstantaneo(null); }}>
           {projetos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </select>
-        <button onClick={criarProjeto} title="Criar novo projeto">➕ Projeto</button>
+        <button onClick={criarProjeto} title="Criar novo projeto">📁 Projeto</button>
         <span className={config.usarApi ? "selo-ia on" : "selo-ia"}>{config.usarApi ? "🟢 " + (config.modelo || "IA") : "⚪ offline"}</span>
         <span className="espaco" />
-        <button onClick={() => setMostrarEditor(v => !v)} title="Mostrar ou ocultar o editor de código">
+        <button onClick={() => setMostrarEditor(v => !v)} title="Mostrar ou ocultar o editor">
           {mostrarEditor ? "🙈 Código" : "👁️ Código"}
         </button>
         <button onClick={() => setModal("modelos")}>🧩 Modelos</button>
@@ -198,7 +256,8 @@ export default function App() {
         <button onClick={() => setModal("ajuda")}>❓</button>
       </header>
       <main className="corpo" style={{ gridTemplateColumns: mostrarEditor ? "330px 6px 1fr 6px 430px" : "330px 6px 1fr" }}>
-        <ChatPanel mensagens={mensagens} ocupado={ocupado} aoEnviar={enviarChat} aoAcao={aoAcaoChat} aoNovoChat={novoChat} />
+        <ChatPanel mensagens={mensagens} ocupado={ocupado} aoEnviar={enviarChat} aoAcao={aoAcaoChat} aoNovoChat={novoChat}
+          anexos={anexos} aoAnexar={anexarArquivos} aoRemoverAnexo={removerAnexo} />
         <div className="divisor" />
         {mostrarEditor && (
           <EditorPanel projeto={projetoAtivo} aba={aba} aoTrocarAba={setAba}
@@ -206,7 +265,7 @@ export default function App() {
             auto={auto} aoAlternarAuto={() => setAuto(a => !a)} />
         )}
         {mostrarEditor && <div className="divisor" />}
-        <PreviewPanel instantaneo={instantaneo} />
+        <PreviewPanel instantaneo={instantaneo} aoErroRuntime={aoErroRuntime} />
       </main>
       <footer className="barra-status">
         <span>🏠 DevCasa Studio · {projetos.length} projeto(s){usuario ? " · ☁️ sincronizado" : " · 💾 local"}</span>
