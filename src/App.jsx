@@ -28,6 +28,7 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [statusSync, setStatusSync] = useState(null);
+  const [mostrarEditor, setMostrarEditor] = useState(true);
 
   const projetoAtivo = projetos.find(p => p.id === ativoId) ?? projetos[0];
 
@@ -96,6 +97,7 @@ export default function App() {
     if (css !== undefined) mudancas.css = css;
     atualizarAtivo(mudancas);
     setAba("js");
+    setMostrarEditor(true);
     setInstantaneo({ codigo: codigo, css: css !== undefined ? css : projetoAtivo.css, versao: Date.now() });
   }
   function aoAcaoChat(a) {
@@ -183,6 +185,9 @@ export default function App() {
         <button onClick={criarProjeto} title="Criar novo projeto">➕ Projeto</button>
         <span className={config.usarApi ? "selo-ia on" : "selo-ia"}>{config.usarApi ? "🟢 " + (config.modelo || "IA") : "⚪ offline"}</span>
         <span className="espaco" />
+        <button onClick={() => setMostrarEditor(v => !v)} title="Mostrar ou ocultar o editor de código">
+          {mostrarEditor ? "🙈 Código" : "👁️ Código"}
+        </button>
         <button onClick={() => setModal("modelos")}>🧩 Modelos</button>
         <button className="botao-primario" onClick={baixarHTML}>💾 HTML</button>
         <button onClick={baixarReact}>⚛️ React</button>
@@ -192,13 +197,15 @@ export default function App() {
         </button>
         <button onClick={() => setModal("ajuda")}>❓</button>
       </header>
-      <main className="corpo" style={{ gridTemplateColumns: "330px 6px 1fr 6px 430px" }}>
+      <main className="corpo" style={{ gridTemplateColumns: mostrarEditor ? "330px 6px 1fr 6px 430px" : "330px 6px 1fr" }}>
         <ChatPanel mensagens={mensagens} ocupado={ocupado} aoEnviar={enviarChat} aoAcao={aoAcaoChat} aoNovoChat={novoChat} />
         <div className="divisor" />
-        <EditorPanel projeto={projetoAtivo} aba={aba} aoTrocarAba={setAba}
-          aoMudar={(c, v) => atualizarAtivo({ [c]: v })} aoExecutar={executar}
-          auto={auto} aoAlternarAuto={() => setAuto(a => !a)} />
-        <div className="divisor" />
+        {mostrarEditor && (
+          <EditorPanel projeto={projetoAtivo} aba={aba} aoTrocarAba={setAba}
+            aoMudar={(c, v) => atualizarAtivo({ [c]: v })} aoExecutar={executar}
+            auto={auto} aoAlternarAuto={() => setAuto(a => !a)} />
+        )}
+        {mostrarEditor && <div className="divisor" />}
         <PreviewPanel instantaneo={instantaneo} />
       </main>
       <footer className="barra-status">
