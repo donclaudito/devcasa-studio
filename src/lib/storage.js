@@ -32,8 +32,6 @@ export function baixarArquivo(nome, conteudo, tipo = "text/html") {
 }
 
 export function montarDocumento({ codigo, css, titulo = "Meu app" }) {
-  // Protege SOMENTE o que poderia fechar os blocos <script> e <style>.
-  // (Trocar todo "</" quebraria as tags JSX como </div>.)
   const c = String(codigo || "").replace(/<\/script/gi, "<\\/script");
   const s = String(css || "").replace(/<\/style/gi, "<\\/style");
   const t = String(titulo).replace(/[<>&"]/g, "");
@@ -47,6 +45,23 @@ export function montarDocumento({ codigo, css, titulo = "Meu app" }) {
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"><\/script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"><\/script>
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"><\/script>
+<script>
+// Runtime do DevCasa Studio: hooks disponíveis globalmente
+window.usePersistente = function(chave, valorInicial) {
+  const [valor, setValor] = React.useState(function() {
+    try {
+      const s = localStorage.getItem(chave);
+      return s ? JSON.parse(s) : valorInicial;
+    } catch (e) { return valorInicial; }
+  });
+  React.useEffect(function() {
+    try { localStorage.setItem(chave, JSON.stringify(valor)); } catch (e) {}
+  }, [valor]);
+  return [valor, setValor];
+};
+// Também disponível como React.usePersistente
+React.usePersistente = window.usePersistente;
+<\/script>
 </head>
 <body>
 <div id="root"></div>

@@ -2,22 +2,23 @@
 
 export function normalizar(t){return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 
-export function mensagemBoasVindas(){return{autor:"ia",texto:"Olá! 👋 Sou seu time de especialistas do DevCasa Studio:\n\n⚛️ Engenheiro React Sênior\n🎯 Engenheiro de Prompts\n🏗️ Arquiteto de Software\n\n📴 Offline: modelos prontos + dicas de prompts/arquitetura.\n🟢 Com IA ligada (⚙️): crio qualquer app com plano de arquitetura antes do código.\n\nDigite /modelos ou /ajuda."}}
+export function mensagemBoasVindas(){return{autor:"ia",texto:"Olá! 👋 Sou seu time de especialistas do DevCasa Studio:\n\n⚛️ Engenheiro React Sênior\n🎨 Designer UI/UX\n🎯 Engenheiro de Prompts\n🏗️ Arquiteto de Software\n\n📴 Offline: modelos prontos (incluindo premium).\n🟢 Com IA (⚙️): crio apps com DESIGN PREMIUM por padrão.\n\nDigite /modelos ou /ajuda."}}
 
 const REGRAS=[
   {chaves:["calculadora","calcular","somar","matematica"],template:"calculadora"},
   {chaves:["tarefa","afazeres","todo","to do","organiz"],template:"tarefas"},
   {chaves:["cronometro","timer","temporizador","cozinhar"],template:"cronometro"},
-  {chaves:["receita","culinaria","comida"],template:"receitas"}
+  {chaves:["receita","culinaria","comida"],template:"receitas"},
+  {chaves:["premium","bonito","design","elegante","luxo","moderno"],template:"premium"}
 ];
 
-const TEXTO_PROMPT = "🎯 Mini-curso de prompts para criar apps:\n\n1. PAPEL: \"aja como engenheiro React sênior\"\n2. CONTEXTO: \"é para minha família usar no celular\"\n3. TAREFA clara: \"app para controlar remédios com horários\"\n4. FORMATO: \"responda com código React completo e CSS\"\n5. RESTRIÇÕES: \"sem bibliotecas externas, simples e grande para idosos\"\n\nExemplo pronto:\n\"Aja como dev React sênior. Crie um app doméstico para controlar remédios da família: nome, horário e marcação de tomado. Código completo em um componente, com persistência.\"\n\nCom a IA online ligada (⚙️), eu já aplico isso automaticamente!";
+const TEXTO_PROMPT = "🎯 Mini-curso de prompts para apps premium:\n\n1. PAPEL: \"aja como designer UI/UX sênior + dev React\"\n2. ESTÉTICA: \"design premium com glassmorphism, animações suaves, micro-interações\"\n3. TAREFA: \"app para X\"\n4. RESTRIÇÕES: \"mobile-first, acessível, responsivo, sem libs externas\"\n\nExemplo matador:\n\"Aja como designer UI/UX sênior. Crie um app premium de lista de tarefas com:\n• Glassmorphism nos cards\n• Animações ao marcar tarefa\n• Hover states com feedback\n• Mobile-first\n• Cores modernas\"\n\nDica: peça \"premium\", \"glassmorphism\", \"animações suaves\" explicitamente!";
 
-const TEXTO_ARQ = "🏗️ Princípios de arquitetura que uso nos apps:\n\n• Um componente por responsabilidade (App orquestra, filhos exibem)\n• Estado perto de quem usa; sobe só se compartilhado\n• Estado derivado em vez de duplicado (calcule, não guarde)\n• Persistência com usePersistente (try/catch = segurança)\n• Funções pequenas e puras para regras de negócio\n• Validação de entrada antes de salvar (nunca confie no input)\n\nCom a IA online, eu entrego o PLANO de arquitetura antes do código!";
+const TEXTO_ARQ = "🏗️ Princípios de arquitetura + design premium:\n\n• Componentes pequenos e reutilizáveis\n• Estado perto de quem usa\n• Estado derivado (calcule, não guarde)\n• usePersistente com try/catch\n• CSS variables para temas\n• Transitions em tudo (150-300ms)\n• Hover/active/focus states\n• Mobile-first (min-width media queries)\n• ARIA labels para acessibilidade\n• Dark mode via prefers-color-scheme";
 
 export function responder(entrada){
   const t=normalizar(entrada);
-  if(t.startsWith("/ajuda"))return{texto:"📖 Guia rápido:\n\n1️⃣ Peça no chat (ex.: \"app de receitas\")\n2️⃣ Clique no botão 📥\n3️⃣ Edite se quiser (Ctrl+Enter executa)\n4️⃣ 💾 HTML ou ⚛️ React (.zip) exportam\n\n/modelos - lista todos\n/limpar - limpa chat\n⚙️ IA - liga os 3 especialistas online"};
+  if(t.startsWith("/ajuda"))return{texto:"📖 Guia rápido:\n\n1️⃣ Peça com detalhes (ex.: \"app premium de receitas com glassmorphism\")\n2️⃣ Clique 📥 no botão\n3️⃣ ▶ Executar\n4️⃣ 💾 HTML ou ⚛️ React (.zip)\n\n/modelos - lista todos\n/limpar - limpa chat\n⚙️ IA - liga especialistas"};
   if(t.startsWith("/modelos")){return{texto:"🧩 Modelos disponíveis:\n\n"+TEMPLATES.map(x=>x.icone+" "+x.nome+" — "+x.descricao).join("\n")}}
   for(const r of REGRAS){
     if(r.chaves.some(c=>t.includes(c))){
@@ -26,12 +27,13 @@ export function responder(entrada){
     }
   }
   if(/(prompt|perguntar melhor|engenharia de prompt)/.test(t))return{texto:TEXTO_PROMPT};
-  if(/(arquitet|estrutura do app|organizar o codigo|escalab)/.test(t))return{texto:TEXTO_ARQ};
-  if(/(use ?state|\bestado\b)/.test(t))return{texto:"🧠 Estado (useState) é a memória do componente.\n\nconst [valor, setValor] = React.useState(0);\n\n• valor: dado atual\n• setValor: atualiza e redesenha a tela"};
-  if(/(use ?effect)/.test(t))return{texto:"⏱ useEffect roda código quando algo muda (timers, listeners...). Sempre devolva uma função de limpeza."};
-  if(/(css|estilo|visual)/.test(t))return{texto:"🎨 Edite a aba styles.css e use className no JSX. Dica de arquiteto: nomes de classe por propósito (.cartao, .lista), não por cor (.azul)."};
-  if(/^(oi|ola|bom dia|boa tarde|boa noite|e ai|hey)/.test(t))return{texto:"Olá! 🏠 Peça um app, dicas de prompts (\"me ensina a fazer prompts\") ou arquitetura (\"que arquitetura uso para X?\")."};
-  return{texto:"📴 Modo offline ativo.\n\nPosso agora:\n• 🧩 Modelos prontos: calculadora, tarefas, cronômetro, receitas\n• 🎯 Ensinar prompts melhores\n• 🏗️ Explicar arquitetura React\n\n💡 Para criação sob medida com plano de arquitetura, ligue a IA em ⚙️ (Mistral/Groq grátis)."};
+  if(/(arquitet|estrutura do app|organizar o codigo)/.test(t))return{texto:TEXTO_ARQ};
+  if(/(premium|bonito|design|glass|animac|moderno|elegante|luxo|top)/.test(t))return{texto:"🎨 Para design premium na IA online (⚙️), peça assim:\n\n\"Crie um app [X] com:\n• Glassmorphism\n• Animações suaves (transitions 200ms)\n• Micro-interações em hover/click\n• Mobile-first\n• Dark mode automático\"\n\nOu use o modelo \"✨ Premium\" em /modelos!"};
+  if(/(use ?state|\bestado\b)/.test(t))return{texto:"🧠 useState é memória do componente.\n\nconst [valor, setValor] = React.useState(0);"};
+  if(/(use ?effect)/.test(t))return{texto:"⏱ useEffect roda quando algo muda. Sempre devolva cleanup."};
+  if(/(css|estilo|visual)/.test(t))return{texto:"🎨 Edite styles.css. Dica premium: use CSS variables para cores e transitions em tudo."};
+  if(/^(oi|ola|bom dia|boa tarde|boa noite|e ai|hey)/.test(t))return{texto:"Olá! 🏠 Peça um app premium: \"crie um app de receitas com design premium e animações\". Ou /modelos para ver prontos."};
+  return{texto:"📴 Modo offline ativo.\n\nPosso:\n• 🧩 Modelos prontos (incluindo ✨ Premium)\n• 🎨 Ensinar design premium\n• 🏗️ Explicar arquitetura\n\n💡 Para criação premium sob medida, ligue IA em ⚙️ (Mistral/Groq grátis)."};
 }
 
 export function extrairCodigo(texto){
@@ -40,7 +42,45 @@ export function extrairCodigo(texto){
   return null
 }
 
-const PROMPT_SISTEMA = "Você é o agente especialista do DevCasa Studio, operando com três papéis simultâneos:\n\n1) ENGENHEIRO REACT SÊNIOR (JavaScript): domina hooks (useState, useEffect, useMemo, useRef), composição de componentes, JSX, estado derivado, listas e keys, eventos, performance e acessibilidade básica.\n\n2) ENGENHEIRO DE PROMPTS: interpreta a intenção real do pedido; se ambíguo, declara suposições claras antes de codar ou faz até 2 perguntas objetivas; responde de forma estruturada e reprodutível; quando pedirem, ensina técnicas de prompt (papel, contexto, tarefa, formato, restrições, exemplos).\n\n3) ARQUITETO DE SOFTWARE: planeja antes de codar (componentes, fluxo de estado, persistência, segurança); aplica separação de responsabilidades, nomes claros, funções pequenas e tratamento de erros; explica cada decisão arquitetural em 1 frase.\n\nREGRAS DE CÓDIGO DO DEVCASA STUDIO (obrigatórias):\n- Um único componente raiz: function App() { ... } sem exports.\n- NUNCA use import/require: React é variável global (React.useState, React.useEffect...).\n- NUNCA chame ReactDOM.createRoot/render: o ambiente monta o App automaticamente.\n- Estilos via className; se criar CSS, entregue em bloco separado ```css.\n- Persistência: hook usePersistente com try/catch em volta de localStorage.\n- Segurança: sem eval/innerHTML com dados do usuário; valide entradas; parseFloat com checagem de NaN.\n- Comentários em pt-BR nas partes não óbvias.\n\nFORMATO DE RESPOSTA (sempre):\n1. 🎯 Interpretação: 1 frase do que entendeu.\n2. 🏗️ Arquitetura: 3-5 bullets (componentes, estado, persistência, segurança).\n3. 💻 Código: bloco ```jsx único e completo.\n4. 🎨 CSS (se necessário): bloco ```css.\n5. 🚀 Próximos passos: 2-3 ideias de evolução.\n\nDidático com usuário leigo: explique jargões. Responda sempre em português do Brasil.";
+const PROMPT_SISTEMA = `Você é o agente especialista do DevCasa Studio, operando com QUATRO papéis simultâneos:
+
+1) ENGENHEIRO REACT SÊNIOR (JavaScript): hooks (useState, useEffect, useMemo, useRef, useCallback), composição, JSX, performance (React.memo, useMemo), acessibilidade (ARIA, contraste, focus), mobile-first.
+
+2) DESIGNER UI/UX SÊNIOR: **TODOS os apps devem ter DESIGN PREMIUM por padrão**. Aplique SEMPRE:
+   • Glassmorphism sutil (backdrop-filter: blur(10px), background: rgba(255,255,255,0.1))
+   • Gradientes modernos (linear-gradient em backgrounds, botões, textos)
+   • Sombras em camadas (box-shadow com 3-4 valores para profundidade)
+   • Border-radius generosos (12px a 24px)
+   • Micro-interações: transitions de 150-300ms em TODO hover, click, focus
+   • Animações suaves (transform: scale, translate em vez de width/height)
+   • Paleta moderna: 1 cor principal + 1 accent + neutrals
+   • Dark mode via @media (prefers-color-scheme: dark)
+   • Mobile-first (breakpoints min-width)
+   • Tipografia: font-family system-ui, font-weight variados, letter-spacing em títulos
+   • Espaçamento consistente (multiplos de 4px ou 8px)
+
+3) ENGENHEIRO DE PROMPTS: interpreta intenção; se ambíguo, declara suposições; responde estruturado.
+
+4) ARQUITETO DE SOFTWARE: planeja antes de codar (componentes, estado, persistência, segurança).
+
+REGRAS DE CÓDIGO DO DEVCASA STUDIO (obrigatórias):
+- Um único componente raiz: function App() { ... } sem exports.
+- NUNCA use import/require: React é variável global (React.useState, React.useEffect).
+- NUNCA chame ReactDOM.createRoot/render: ambiente monta automaticamente.
+- Estilos via className; entregue CSS em bloco separado \`\`\`css.
+- Persistência: hook usePersistente com try/catch.
+- Segurança: sem eval/innerHTML com dados do usuário; valide inputs.
+- Comentários em pt-BR nas partes não óbvias.
+
+FORMATO DE RESPOSTA (sempre):
+1. 🎯 Interpretação: 1 frase do que entendeu.
+2. 🏗️ Arquitetura: 3-5 bullets.
+3. 🎨 Design: paleta de cores + estilo visual escolhido.
+4. 💻 Código: bloco \`\`\`jsx único e completo.
+5. 🎨 CSS: bloco \`\`\`css PREMIUM (glassmorphism, animações, mobile).
+6. 🚀 Próximos passos: 2-3 ideias de evolução.
+
+Didático com usuário leigo: explique jargões. Responda sempre em português do Brasil.`;
 
 export async function consultarAPI(config, historico) {
   const resposta = await fetch(config.apiUrl, {
@@ -51,7 +91,7 @@ export async function consultarAPI(config, historico) {
     },
     body: JSON.stringify({
       model: config.modelo || "mistral-small-latest",
-      temperature: 0.35,
+      temperature: 0.4,
       messages: [{ role: "system", content: PROMPT_SISTEMA }].concat(historico)
     })
   });

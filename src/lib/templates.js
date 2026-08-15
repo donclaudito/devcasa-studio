@@ -124,3 +124,53 @@ export const TEMPLATES = [
     css:"body{background:#fff8ef;font-family:system-ui,sans-serif}.app{max-width:520px;margin:24px auto;background:#fffdf9;border:1px solid #f0dcb3;border-radius:16px;padding:22px;box-shadow:0 10px 28px rgba(120,80,20,.08)}h1{font-size:22px;margin:0 0 10px;color:#6b3f0d}h2{font-size:15px;margin:16px 0 6px;color:#a0522d;border-bottom:1px dashed #e6cf9a;padding-bottom:4px}label{display:block;font-size:13px;color:#6b3f0d;margin:10px 0 4px;font-weight:600}input,textarea{width:100%;padding:9px 11px;border:1px solid #e6cf9a;border-radius:8px;font-family:inherit;font-size:14px;background:#fffef9;box-sizing:border-box}textarea{min-height:110px;resize:vertical;line-height:1.6}.botoes{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}.botoes button,.nova,.voltar{padding:9px 16px;border:0;border-radius:8px;cursor:pointer;font-size:14px}.primario{background:#c86a1f;color:#fff}.suave{background:#f0dcb3;color:#6b3f0d}.perigo{background:#b00020;color:#fff}.nova{background:#c86a1f;color:#fff;width:100%;margin:10px 0}.voltar{background:#f0dcb3;color:#6b3f0d;margin-bottom:10px}.busca{margin-bottom:10px}.lista{list-style:none;padding:0;margin:0}.card{background:#fff;padding:12px 14px;border:1px solid #f0dcb3;border-radius:10px}.lista li{cursor:pointer;margin-bottom:8px}.lista li:hover .card{background:#fff5e0;border-color:#c86a1f}.lista li strong{display:block;color:#6b3f0d;font-size:15px}.lista li small{color:#a68860;font-size:12px}.ing{padding-left:20px;margin:0 0 10px}.ing li{margin-bottom:4px;cursor:default}.modo{white-space:pre-wrap;line-height:1.6;background:#fff8ef;padding:10px;border-radius:8px;border-left:3px solid #c86a1f}.data{color:#a68860;display:block;margin-bottom:8px}.vazio{text-align:center;color:#a68860;padding:24px 0;font-style:italic}"
   }
 ];
+
+// Modelo Premium adicionado dinamicamente
+TEMPLATES.push({
+  id:"premium", nome:"✨ Premium (Demo)", icone:"✨", descricao:"Demonstração de design premium: glassmorphism, animações, dark mode.",
+  codigo:"function App(){const[theme,setTheme]=React.useState(\"dark\");const[count,setCount]=React.useState(0);const[tasks,setTasks]=React.useState([{id:1,text:\"Aprender React\",done:true},{id:2,text:\"Criar app premium\",done:false},{id:3,text:\"Impressionar familia\",done:false}]);const[newTask,setNewTask]=React.useState(\"\");function addTask(){if(!newTask.trim())return;setTasks([...tasks,{id:Date.now(),text:newTask,done:false}]);setNewTask(\"\")}function toggleTask(id){setTasks(tasks.map(t=>t.id===id?{...t,done:!t.done}:t))}return(<div className={\"app \"+theme}><div className=\"header\"><div className=\"logo\"><span className=\"emoji\">✨</span><h1>Premium App</h1></div><button className=\"theme-btn\" onClick={()=>setTheme(theme===\"dark\"?\"light\":\"dark\")}>{theme===\"dark\"?\"☀️\":\"🌙\"}</button></div><div className=\"card glass\"><div className=\"counter\"><span className=\"count\">{count}</span><div className=\"counter-btns\"><button className=\"btn primary\" onClick={()=>setCount(count+1)}>+</button><button className=\"btn\" onClick={()=>setCount(c=>Math.max(0,c-1))}>-</button></div></div></div><div className=\"card glass\"><h2>📝 Tarefas</h2><div className=\"input-row\"><input value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>e.key===\"Enter\"&&addTask()} placeholder=\"Nova tarefa premium...\"/><button className=\"btn primary\" onClick={addTask}>Adicionar</button></div><ul className=\"tasks\">{tasks.map(t=>(<li key={t.id} className={t.done?\"task done\":\"task\"} onClick={()=>toggleTask(t.id)}><span className=\"check\">{t.done?\"✓\":\"○\"}</span><span>{t.text}</span></li>))}</ul></div></div>)}",
+  css:`:root{--bg-dark:#0f0f1e;--bg-light:#f0f4ff;--card-dark:rgba(255,255,255,0.05);--card-light:rgba(255,255,255,0.7);--text-dark:#fff;--text-light:#1a1a2e;--primary:#667eea;--accent:#f093fb;--grad:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%)}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;background:var(--grad);background-size:400% 400%;animation:gradBG 15s ease infinite}
+@keyframes gradBG{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.app{min-height:100vh;padding:24px;transition:all .3s ease}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;max-width:600px;margin-left:auto;margin-right:auto}
+.logo{display:flex;align-items:center;gap:12px}
+.emoji{font-size:40px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+h1{font-size:28px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.5px}
+.theme-btn{background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer;transition:all .3s ease}
+.theme-btn:hover{transform:rotate(180deg) scale(1.1);background:rgba(255,255,255,.2)}
+.card{max-width:600px;margin:0 auto 20px;padding:24px;border-radius:20px;transition:all .3s ease}
+.card.glass{background:var(--card-dark);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 32px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.1)}
+.light .card.glass{background:var(--card-light);border:1px solid rgba(255,255,255,.5);box-shadow:0 8px 32px rgba(102,126,234,.15)}
+.card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.counter{display:flex;justify-content:space-between;align-items:center}
+.count{font-size:72px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.counter-btns{display:flex;flex-direction:column;gap:8px}
+.btn{padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s ease;backdrop-filter:blur(10px)}
+.light .btn{background:rgba(102,126,234,.1);border:1px solid rgba(102,126,234,.2);color:#1a1a2e}
+.btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.15)}
+.light .btn:hover{background:rgba(102,126,234,.2)}
+.btn.primary{background:var(--grad);border:none;color:#fff}
+.btn.primary:hover{box-shadow:0 4px 20px rgba(102,126,234,.5);transform:translateY(-2px) scale(1.02)}
+.btn:active{transform:scale(.96)}
+h2{color:#fff;font-size:20px;font-weight:700;margin-bottom:16px}
+.light h2{color:#1a1a2e}
+.input-row{display:flex;gap:8px;margin-bottom:16px}
+input{flex:1;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;font-size:14px;transition:all .2s ease;backdrop-filter:blur(10px)}
+.light input{background:rgba(255,255,255,.8);border:1px solid rgba(102,126,234,.2);color:#1a1a2e}
+input::placeholder{color:rgba(255,255,255,.5)}
+.light input::placeholder{color:rgba(0,0,0,.4)}
+input:focus{outline:none;border-color:var(--primary);background:rgba(255,255,255,.1);box-shadow:0 0 0 3px rgba(102,126,234,.2)}
+.tasks{list-style:none}
+.task{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:rgba(255,255,255,.03);margin-bottom:8px;cursor:pointer;transition:all .3s ease;border:1px solid transparent}
+.light .task{background:rgba(255,255,255,.5)}
+.task:hover{background:rgba(255,255,255,.08);transform:translateX(4px);border-color:rgba(255,255,255,.1)}
+.light .task:hover{background:rgba(255,255,255,.8)}
+.check{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:rgba(255,255,255,.1);color:#fff;transition:all .3s ease}
+.light .check{background:rgba(102,126,234,.1);color:#667eea}
+.task.done .check{background:var(--grad);color:#fff}
+.task.done span:last-child{text-decoration:line-through;opacity:.5}
+.task span:last-child{color:#fff;flex:1}
+.light .task span:last-child{color:#1a1a2e}
+@media(max-width:640px){.app{padding:16px}.count{font-size:56px}h1{font-size:22px}.card{padding:20px}}`
+});
