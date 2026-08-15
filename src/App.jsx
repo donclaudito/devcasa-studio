@@ -3,10 +3,12 @@ import ChatPanel from "./components/ChatPanel.jsx";
 import EditorPanel from "./components/EditorPanel.jsx";
 import PreviewPanel from "./components/PreviewPanel.jsx";
 import { ModalModelos, ModalConfig, ModalAjuda } from "./components/Modais.jsx";
+import ModalConta from "./components/ModalConta.jsx";
 import { TEMPLATES } from "./lib/templates.js";
 import { mensagemBoasVindas, responder, consultarAPIStream, extrairCodigo } from "./lib/assistant.js";
 import { carregarProjetos, salvarProjetos, novoProjeto, montarDocumento, baixarArquivo } from "./lib/storage.js";
 import { baixarProjetoReact, slugNome } from "./lib/exportar.js";
+import * as sync from "./lib/sync.js";
 
 function carregarConfig() {
   const padrao = { usarApi: false, apiUrl: "", apiKey: "", modelo: "" };
@@ -24,6 +26,8 @@ export default function App() {
   const [auto, setAuto] = useState(false);
   const [config, setConfig] = useState(carregarConfig);
   const [modal, setModal] = useState(null);
+  const [usuario, setUsuario] = useState(null);
+  const [statusSync, setStatusSync] = useState(null);
 
   const projetoAtivo = projetos.find(p => p.id === ativoId) ?? projetos[0];
 
@@ -31,6 +35,40 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem("devcasa:config", JSON.stringify(config)); } catch (e) {}
   }, [config]);
+
+  useEffect(() => {
+    return sync.aoMudarUsuario(async (u) => {
+      setUsuario(u);
+      if (u) {
+        try {
+          const nuvem = await sync.baixarDaNuvem();
+          setProjetos(atuais => {
+            const mapa = new Map();
+            atuais.forEach(p => mapa.set(p.id, p));
+            (nuvem || []).forEach(p => {
+              const local = mapa.get(p.id);
+              if (!local || (p.atualizadoEm > (local.atualizadoEm || 0))) mapa.set(p.id, p);
+            });
+            const unidos = Array.from(mapa.values());
+            setStatusSync({ email: u.email, contador: unidos.length });
+            return unidos;
+          });
+        } catch (e) {
+          console.warn("Falha ao baixar da nuvem:", e);
+        }
+      } else {
+        setStatusSync(null);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!usuario) return;
+    projetos.forEach(p => {
+      sync.enviarParaNuvem(p).catch(e => console.warn("Upload falhou:", e));
+    });
+  }, [projetos, usuario]);
+
   useEffect(() => {
     if (!auto || !projetoAtivo) return;
     const id = setTimeout(() => setInstantaneo({ codigo: projetoAtivo.codigo, css: projetoAtivo.css, versao: Date.now() }), 900);
@@ -76,11 +114,26 @@ export default function App() {
       return copia;
     });
   }
+  function sincronizarAgora() {
+    if (!usuario) return;
+    sync.baixarDaNuvem().then(nuvem => {
+      if (!nuvem) return;
+      setProjetos(atuais => {
+        const mapa = new Map();
+        atuais.forEach(p => mapa.set(p.id, p));
+        nuvem.forEach(p => {
+          const local = mapa.get(p.id);
+          if (!local || (p.atualizadoEm > (local.atualizadoEm || 0))) mapa.set(p.id, p);
+        });
+        return Array.from(mapa.values());
+      });
+      alert("✅ Sincronizado com a nuvem!");
+    }).catch(e => alert("Erro: " + e.message));
+  }
 
   async function enviarChat(texto) {
     if (texto.startsWith("/limpar")) { setMensagens([mensagemBoasVindas()]); return; }
     setMensagens(m => [...m, { autor: "usuario", texto }]);
-
     if (config.usarApi && config.apiUrl) {
       setOcupado(true);
       setMensagens(m => [...m, { autor: "ia", texto: "✍️" }]);
@@ -98,10 +151,8 @@ export default function App() {
           acao: codigo ? { tipo: "inserir-codigo", codigo: codigo, rotulo: "📥 Inserir código no editor" } : null
         });
       } catch (erro) {
-        atualizarUltima({ texto: "⚠️ Falha na IA online: " + erro.message + "\n\nConfira chave e URL em ⚙️ IA. Enquanto isso, modo offline ativo: digite /modelos." });
-      } finally {
-        setOcupado(false);
-      }
+        atualizarUltima({ texto: "⚠️ Falha na IA: " + erro.message });
+      } finally { setOcupado(false); }
     } else {
       const r = responder(texto);
       setMensagens(m => [...m, { autor: "ia", texto: r.texto, acao: r.acao ? r.acao : null }]);
@@ -129,14 +180,17 @@ export default function App() {
         <select value={projetoAtivo.id} onChange={e => { setAtivoId(e.target.value); setInstantaneo(null); }}>
           {projetos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </select>
-        <button onClick={criarProjeto} title="Criar novo projeto com chat novo">➕ Projeto</button>
-        <span className={config.usarApi ? "selo-ia on" : "selo-ia"}>{config.usarApi ? "🟢 " + (config.modelo || "IA online") : "⚪ offline"}</span>
+        <button onClick={criarProjeto} title="Criar novo projeto">➕ Projeto</button>
+        <span className={config.usarApi ? "selo-ia on" : "selo-ia"}>{config.usarApi ? "🟢 " + (config.modelo || "IA") : "⚪ offline"}</span>
         <span className="espaco" />
         <button onClick={() => setModal("modelos")}>🧩 Modelos</button>
         <button className="botao-primario" onClick={baixarHTML}>💾 HTML</button>
-        <button onClick={baixarReact}>⚛️ React (.zip)</button>
+        <button onClick={baixarReact}>⚛️ React</button>
         <button onClick={() => setModal("config")}>⚙️ IA</button>
-        <button onClick={() => setModal("ajuda")}>❓ Ajuda</button>
+        <button className={usuario ? "botao-conta on" : "botao-conta"} onClick={() => setModal("conta")}>
+          {usuario ? "☁️ " + (usuario.email || "").split("@")[0] : "☁️ Conta"}
+        </button>
+        <button onClick={() => setModal("ajuda")}>❓</button>
       </header>
       <main className="corpo" style={{ gridTemplateColumns: "330px 6px 1fr 6px 430px" }}>
         <ChatPanel mensagens={mensagens} ocupado={ocupado} aoEnviar={enviarChat} aoAcao={aoAcaoChat} aoNovoChat={novoChat} />
@@ -148,13 +202,13 @@ export default function App() {
         <PreviewPanel instantaneo={instantaneo} />
       </main>
       <footer className="barra-status">
-        <span>🏠 DevCasa Studio · {projetos.length} projeto(s)</span>
-        <span>{config.usarApi ? "IA: " + (config.modelo || "groq") + " · streaming ⚡" : "modo offline"}</span>
+        <span>🏠 DevCasa Studio · {projetos.length} projeto(s){usuario ? " · ☁️ sincronizado" : " · 💾 local"}</span>
+        <span>{config.usarApi ? "IA: " + (config.modelo || "groq") + " · ⚡" : "modo offline"}</span>
       </footer>
       {modal === "modelos" && <ModalModelos aoUsar={usarModelo} aoFechar={() => setModal(null)} />}
       {modal === "config" && <ModalConfig config={config} aoSalvar={c => { setConfig(c); setModal(null); }} aoFechar={() => setModal(null)} />}
       {modal === "ajuda" && <ModalAjuda aoFechar={() => setModal(null)} />}
+      {modal === "conta" && <ModalConta aoFechar={() => setModal(null)} status={statusSync} aoSincronizar={sincronizarAgora} />}
     </div>
   );
 }
-
