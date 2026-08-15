@@ -4,7 +4,7 @@ import EditorPanel from "./components/EditorPanel.jsx";
 import PreviewPanel from "./components/PreviewPanel.jsx";
 import { ModalModelos, ModalConfig, ModalAjuda } from "./components/Modais.jsx";
 import { TEMPLATES } from "./lib/templates.js";
-import { mensagemBoasVindas, responder, consultarAPI, extrairCodigo } from "./lib/assistant.js";
+import { mensagemBoasVindas, responder, consultarAPIStream, extrairCodigo } from "./lib/assistant.js";
 import { carregarProjetos, salvarProjetos, novoProjeto, montarDocumento, baixarArquivo } from "./lib/storage.js";
 import { baixarProjetoReact, slugNome } from "./lib/exportar.js";
 
@@ -69,6 +69,13 @@ export default function App() {
       inserirCodigo(a.codigo);
     }
   }
+  function atualizarUltima(mudanca) {
+    setMensagens(m => {
+      const copia = m.slice();
+      copia[copia.length - 1] = Object.assign({}, copia[copia.length - 1], mudanca);
+      return copia;
+    });
+  }
 
   async function enviarChat(texto) {
     if (texto.startsWith("/limpar")) { setMensagens([mensagemBoasVindas()]); return; }
@@ -76,20 +83,22 @@ export default function App() {
 
     if (config.usarApi && config.apiUrl) {
       setOcupado(true);
+      setMensagens(m => [...m, { autor: "ia", texto: "✍️" }]);
       try {
         const historico = [...mensagens, { autor: "usuario", texto }].slice(-10).map(m => ({
           role: m.autor === "ia" ? "assistant" : "user",
           content: m.texto
         }));
-        const resposta = await consultarAPI(config, historico);
+        const resposta = await consultarAPIStream(config, historico, (parcial) => {
+          atualizarUltima({ texto: parcial });
+        });
         const codigo = extrairCodigo(resposta);
-        setMensagens(m => [...m, {
-          autor: "ia",
+        atualizarUltima({
           texto: resposta,
           acao: codigo ? { tipo: "inserir-codigo", codigo: codigo, rotulo: "📥 Inserir código no editor" } : null
-        }]);
+        });
       } catch (erro) {
-        setMensagens(m => [...m, { autor: "ia", texto: "⚠️ Falha na IA online: " + erro.message + "\n\nConfira chave e URL em ⚙️ IA. Enquanto isso, modo offline ativo: digite /modelos." }]);
+        atualizarUltima({ texto: "⚠️ Falha na IA online: " + erro.message + "\n\nConfira chave e URL em ⚙️ IA. Enquanto isso, modo offline ativo: digite /modelos." });
       } finally {
         setOcupado(false);
       }
@@ -140,7 +149,7 @@ export default function App() {
       </main>
       <footer className="barra-status">
         <span>🏠 DevCasa Studio · {projetos.length} projeto(s)</span>
-        <span>{config.usarApi ? "IA: " + (config.modelo || "mistral") : "modo offline"}</span>
+        <span>{config.usarApi ? "IA: " + (config.modelo || "groq") + " · streaming ⚡" : "modo offline"}</span>
       </footer>
       {modal === "modelos" && <ModalModelos aoUsar={usarModelo} aoFechar={() => setModal(null)} />}
       {modal === "config" && <ModalConfig config={config} aoSalvar={c => { setConfig(c); setModal(null); }} aoFechar={() => setModal(null)} />}
